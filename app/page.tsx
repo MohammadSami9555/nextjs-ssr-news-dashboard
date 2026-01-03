@@ -1,65 +1,206 @@
 import Image from "next/image";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+interface Article {
+  title?: string;
+  description?: string;
+  url?: string;
+  urlToImage?: string;
+}
+
+const queryByCategory: Record<string, string> = {
+  technology: "(technology OR AI OR gadgets OR programming)",
+  sports: "(cricket OR football OR olympics OR tennis OR IPL)",
+  business: "(business OR finance OR startup OR stock market)",
+  health: "(health OR doctor OR medicine OR fitness)",
+  science: "(science OR space OR NASA OR research)",
+  entertainment: "(movies OR bollywood OR hollywood OR netflix)",
+};
+
+async function getNews(
+  category: string,
+  page: number,
+  country: string,
+  search: string
+) {
+  if (search) {
+    const res = await fetch(
+      `https://newsapi.org/v2/everything?q=${encodeURIComponent(
+        search
+      )}&language=en&pageSize=20&page=${page}&apiKey=${
+        process.env.NEWS_API_KEY
+      }`,
+      { cache: "no-store" }
+    );
+
+    return res.json();
+  }
+
+  const r1 = await fetch(
+    `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&pageSize=20&page=${page}&apiKey=${process.env.NEWS_API_KEY}`,
+    { cache: "no-store" }
+  );
+
+  let data = await r1.json();
+
+  if (!data?.articles?.length) {
+    const query = queryByCategory[category] ?? category;
+
+    const r2 = await fetch(
+      `https://newsapi.org/v2/everything?q=${encodeURIComponent(
+        query
+      )}&language=en&pageSize=20&page=${page}&apiKey=${
+        process.env.NEWS_API_KEY
+      }`,
+      { cache: "no-store" }
+    );
+
+    data = await r2.json();
+  }
+
+  return data;
+}
+
+export default async function NewsCategoryPage({
+  params,
+  searchParams,
+}: {
+  params?: { category?: string };
+  searchParams?: { page?: string; country?: string; search?: string };
+}) {
+  const category = (params?.category ?? "technology").toLowerCase();
+  const page = Number(searchParams?.page ?? "1");
+  const country = searchParams?.country ?? "in";
+  const search = searchParams?.search ?? "";
+
+  const data = await getNews(category, page, country, search);
+  const articles: Article[] = data?.articles ?? [];
+
+  const categories = [
+    "technology",
+    "business",
+    "sports",
+    "health",
+    "science",
+    "entertainment",
+  ];
+
+  const countries = [
+    { code: "in", name: "India" },
+    { code: "us", name: "United States" },
+    { code: "gb", name: "United Kingdom" },
+    { code: "au", name: "Australia" },
+    { code: "ca", name: "Canada" },
+  ];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="p-6 max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-2">📰 SSR News Dashboard</h1>
+
+      <p className="mb-4">
+        Category: <b>{category}</b> — Country: <b>{country.toUpperCase()}</b> — Page:{" "}
+        <b>{page}</b>
+      </p>
+
+      <form className="mb-4 flex gap-2">
+        <input
+          name="search"
+          defaultValue={search}
+          placeholder="Search news e.g. AI, Cricket, Budget..."
+          className="border px-3 py-2 rounded-lg w-80"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+        <input type="hidden" name="country" value={country} />
+        <input type="hidden" name="page" value="1" />
+        <button className="px-4 py-2 bg-black text-white rounded-lg">
+          Search
+        </button>
+      </form>
+
+      <div className="flex gap-2 flex-wrap mb-4">
+        {categories.map((c) => (
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            key={c}
+            href={`/news/${c}?country=${country}&search=${search}&page=1`}
+            className={`px-3 py-1 rounded-full border ${
+              c === category ? "bg-black text-white" : ""
+            }`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
+            {c}
           </a>
+        ))}
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-6">
+        {countries.map((ct) => (
           <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            key={ct.code}
+            href={`/news/${category}?country=${ct.code}&search=${search}&page=1`}
+            className={`px-3 py-1 rounded-full border ${
+              ct.code === country ? "bg-blue-600 text-white" : ""
+            }`}
           >
-            Documentation
+            {ct.name}
           </a>
-        </div>
-      </main>
+        ))}
+      </div>
+
+      {articles.length === 0 && <p>No news found.</p>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {articles.map((a, i) => (
+          <div key={i} className="border rounded-xl shadow p-4">
+            {a.urlToImage && (
+              <Image
+                src={a.urlToImage}
+                width={500}
+                height={300}
+                alt="img"
+                className="rounded-lg object-cover"
+              />
+            )}
+
+            <h3 className="font-semibold mt-2">{a.title}</h3>
+
+            <p className="text-sm mt-1">{a.description ?? "No description"}</p>
+
+            {a.url && (
+              <a
+                href={a.url}
+                target="_blank"
+                className="text-blue-600 underline text-sm"
+              >
+                Read more →
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-4 justify-center mt-8">
+        {page > 1 && (
+          <a
+            className="px-4 py-2 border rounded-lg"
+            href={`/news/${category}?country=${country}&search=${search}&page=${
+              page - 1
+            }`}
+          >
+            ← Previous
+          </a>
+        )}
+
+        <span>Page {page}</span>
+
+        <a
+          className="px-4 py-2 border rounded-lg"
+          href={`/news/${category}?country=${country}&search=${search}&page=${
+            page + 1
+          }`}
+        >
+          Next →
+        </a>
+      </div>
     </div>
   );
 }
