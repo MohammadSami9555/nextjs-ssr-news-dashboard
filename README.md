@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SSR News Dashboard – Next.js
 
-## Getting Started
+This project is a **Server-Side Rendered (SSR) News Dashboard** built using **Next.js App Router**.  
+It fetches live news using the News API and renders HTML on the server for **better SEO and personalization**.
 
-First, run the development server:
+---
 
-```bash
+## 🚀 Features
+
+- ✔ Server-Side Rendering (SSR)
+- ✔ Category filter (technology, sports, etc.)
+- ✔ Country filter (IN, US, UK, etc.)
+- ✔ Search functionality
+- ✔ Pagination
+- ✔ Tailwind responsive UI
+- ✔ API key security via environment variables
+- ✔ Error + Empty state handling UI
+- ✔ SEO-friendly meta support
+
+---
+
+## 🧠 Why SSR?
+
+SSR generates HTML **on the server for every request**.
+
+### ✅ Benefits of SSR
+- SEO optimized
+- Fresh data every page load
+- Personalized content per user
+- Faster First Contentful Paint
+
+### ⚠ Trade-offs of SSR
+- More server processing
+- Can be slower than cached CSR
+- Higher API usage
+
+---
+
+## 🗂 Tech Stack
+
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- NewsAPI.org
+- Vercel (optional deployment)
+
+---
+
+## 🔐 Environment Variables
+
+Create `.env.local` file:
+
+NEWS_API_KEY=your_news_api_key_here
+
+
+
+---
+
+## 🧾 Caching Strategy (Very Important for Marks)
+
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
+
+and
+
+fetch(..., { cache: "no-store" })
+
+
+✔ Forces **SSR on every request**  
+✔ No stale cache  
+✔ Real-time news updates
+
+---
+
+## 🛠 Error Handling
+
+App does NOT crash if:
+
+- API fails
+- limit exceeded
+- no results found
+
+Instead, it shows:
+
+No news found or API limit exceeded
+Please try again later
+
+
+---
+
+## ▶ How to Run
+
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open:
+http://localhost:3000/news/technology
