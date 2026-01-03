@@ -25,42 +25,45 @@ async function getNews(
   country: string,
   search: string
 ) {
-  if (search) {
-    const res = await fetch(
-      `https://newsapi.org/v2/everything?q=${encodeURIComponent(
-        search
-      )}&language=en&pageSize=20&page=${page}&apiKey=${
-        process.env.NEWS_API_KEY
-      }`,
+  try {
+    // search news
+    if (search) {
+      const res = await fetch(
+        `https://newsapi.org/v2/everything?q=${encodeURIComponent(
+          search
+        )}&language=en&pageSize=20&page=${page}&apiKey=${process.env.NEWS_API_KEY}`,
+        { cache: "no-store" }
+      );
+
+      return await res.json();
+    }
+
+    // normal headlines
+    const r1 = await fetch(
+      `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&pageSize=20&page=${page}&apiKey=${process.env.NEWS_API_KEY}`,
       { cache: "no-store" }
     );
 
-    return res.json();
+    let data = await r1.json();
+
+    // fallback if empty
+    if (!data?.articles?.length) {
+      const query = queryByCategory[category] ?? category;
+
+      const r2 = await fetch(
+        `https://newsapi.org/v2/everything?q=${encodeURIComponent(
+          query
+        )}&language=en&pageSize=20&page=${page}&apiKey=${process.env.NEWS_API_KEY}`,
+        { cache: "no-store" }
+      );
+
+      data = await r2.json();
+    }
+
+    return data;
+  } catch (err) {
+    return { articles: [] };
   }
-
-  const r1 = await fetch(
-    `https://newsapi.org/v2/top-headlines?country=${country}&category=${category}&pageSize=20&page=${page}&apiKey=${process.env.NEWS_API_KEY}`,
-    { cache: "no-store" }
-  );
-
-  let data = await r1.json();
-
-  if (!data?.articles?.length) {
-    const query = queryByCategory[category] ?? category;
-
-    const r2 = await fetch(
-      `https://newsapi.org/v2/everything?q=${encodeURIComponent(
-        query
-      )}&language=en&pageSize=20&page=${page}&apiKey=${
-        process.env.NEWS_API_KEY
-      }`,
-      { cache: "no-store" }
-    );
-
-    data = await r2.json();
-  }
-
-  return data;
 }
 
 export default async function NewsCategoryPage({
@@ -97,13 +100,16 @@ export default async function NewsCategoryPage({
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">📰 SSR News Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-2 flex gap-2">
+        📰 SSR News Dashboard
+      </h1>
 
       <p className="mb-4">
         Category: <b>{category}</b> — Country: <b>{country.toUpperCase()}</b> — Page:{" "}
         <b>{page}</b>
       </p>
 
+      {/* Search */}
       <form className="mb-4 flex gap-2">
         <input
           name="search"
@@ -118,6 +124,7 @@ export default async function NewsCategoryPage({
         </button>
       </form>
 
+      {/* Categories */}
       <div className="flex gap-2 flex-wrap mb-4">
         {categories.map((c) => (
           <a
@@ -132,6 +139,7 @@ export default async function NewsCategoryPage({
         ))}
       </div>
 
+      {/* Countries */}
       <div className="flex gap-2 flex-wrap mb-6">
         {countries.map((ct) => (
           <a
@@ -146,38 +154,50 @@ export default async function NewsCategoryPage({
         ))}
       </div>
 
-      {articles.length === 0 && <p>No news found.</p>}
+      {/* ⭐⭐⭐ STEP–2 ERROR + EMPTY STATE UI ⭐⭐⭐ */}
+      {(!articles || articles.length === 0) && (
+        <div className="p-6 text-center border rounded-xl">
+          <h2 className="text-xl font-semibold mb-2">
+            No news found or API limit exceeded
+          </h2>
+          <p>Try changing search, category, or country. Please try again later.</p>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {articles.map((a, i) => (
-          <div key={i} className="border rounded-xl shadow p-4">
-            {a.urlToImage && (
-              <Image
-                src={a.urlToImage}
-                width={500}
-                height={300}
-                alt="img"
-                className="rounded-lg object-cover"
-              />
-            )}
+      {/* News grid */}
+      {articles.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {articles.map((a, i) => (
+            <div key={i} className="border rounded-xl shadow p-4">
+              {a.urlToImage && (
+                <Image
+                  src={a.urlToImage}
+                  width={500}
+                  height={300}
+                  alt="img"
+                  className="rounded-lg object-cover"
+                />
+              )}
 
-            <h3 className="font-semibold mt-2">{a.title}</h3>
+              <h3 className="font-semibold mt-2">{a.title}</h3>
 
-            <p className="text-sm mt-1">{a.description ?? "No description"}</p>
+              <p className="text-sm mt-1">{a.description ?? "No description"}</p>
 
-            {a.url && (
-              <a
-                href={a.url}
-                target="_blank"
-                className="text-blue-600 underline text-sm"
-              >
-                Read more →
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
+              {a.url && (
+                <a
+                  href={a.url}
+                  target="_blank"
+                  className="text-blue-600 underline text-sm"
+                >
+                  Read more →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* Pagination */}
       <div className="flex gap-4 justify-center mt-8">
         {page > 1 && (
           <a
